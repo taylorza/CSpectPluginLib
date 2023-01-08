@@ -21,6 +21,9 @@ namespace Plugins.ExecutionProfiler.Controls
         private int _labelWidth;
         private int _labelHeight;
 
+        private int _histogramViewHeight;
+        private int _histogramViewWidth;
+
         public HistogramViewer()
         {
             SetStyle(ControlStyles.OptimizedDoubleBuffer | ControlStyles.AllPaintingInWmPaint, true);
@@ -46,6 +49,8 @@ namespace Plugins.ExecutionProfiler.Controls
             _labelCount = Math.Max(Width / (_labelWidth * 4), 1);
             _viewMinX = _labelWidth / 2;
             _viewMaxX = Width - _labelWidth / 2;
+            _histogramViewHeight = Height - _labelHeight - 5;
+            _histogramViewWidth = Width - _labelWidth;
         }
 
         public void Clear()
@@ -55,6 +60,13 @@ namespace Plugins.ExecutionProfiler.Controls
             _viewMinBucket = 0;
             _viewMaxBucket = 0;
 
+            ForceUpdate();
+        }
+
+        public void Reset()
+        {
+            _viewMinBucket = _minBucket;
+            _viewMaxBucket = _maxBucket;
             ForceUpdate();
         }
 
@@ -86,9 +98,12 @@ namespace Plugins.ExecutionProfiler.Controls
         {
             if (_gfx == null) return;
             _gfx.Graphics.FillRectangle(Brushes.White, 0, 0, Width, Height);
+            _gfx.Graphics.DrawLine(Pens.Black, 0, Height - _labelHeight, Width, Height - _labelHeight);
 
             var range = _viewMaxBucket - _viewMinBucket;
             if (range <= 0) return;
+
+            DrawXAxisLabels(g, range);
 
             var maxValue = 0;
             for (int i = _viewMinBucket; i <= _viewMaxBucket; i++)
@@ -97,27 +112,25 @@ namespace Plugins.ExecutionProfiler.Controls
             }
             if (maxValue <= 0) return;
 
-            var histogramViewHeight = Height - _labelHeight - 5;
-            var histogramViewWidth = Width - _labelWidth;
+            var yscale = (float)_histogramViewHeight / maxValue;
+            var xscale = (float)_histogramViewWidth / range;
 
-            var yscale = (float)histogramViewHeight / maxValue;
-            var xscale = (float)histogramViewWidth / range;
-
-            
-            
             float x = _viewMinX;
             for (int i = _viewMinBucket; i <= _viewMaxBucket; i++)
             {
                 var barHeight = yscale * _buckets[i];
                 if (_buckets[i] > 0) barHeight = Math.Max(barHeight, 2); // Ensure that low values are not completely drowned out
 
-                var y = histogramViewHeight - barHeight;
+                var y = _histogramViewHeight - barHeight;
                 g.FillRectangle(Brushes.Black, new RectangleF(x, y, Math.Max(1, xscale), barHeight));
                 x += xscale;
             }
+        }
 
+        private void DrawXAxisLabels(Graphics g, int range)
+        {
             var addressStep = (float)(range / _labelCount);
-            var labelStep = histogramViewWidth / _labelCount;
+            var labelStep = _histogramViewWidth / _labelCount;
             int address;
             int bank;
             int offset;
@@ -132,8 +145,9 @@ namespace Plugins.ExecutionProfiler.Controls
             address = _viewMaxBucket;
             bank = address >> 16;
             offset = address & 0xffff;
-            g.DrawString($"{bank:x2}:{offset:x4}", Font, Brushes.Black, histogramViewWidth, Height - _labelHeight);
+            g.DrawString($"{bank:x2}:{offset:x4}", Font, Brushes.Black, _histogramViewWidth, Height - _labelHeight);
         }
+
         private void HistogramViewer_FontChanged(object sender, EventArgs e)
         {
             CalculateLabels();

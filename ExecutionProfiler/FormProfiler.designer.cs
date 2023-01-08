@@ -33,6 +33,7 @@
             this.btnStop = new System.Windows.Forms.Button();
             this.btnReset = new System.Windows.Forms.Button();
             this.splitContainer1 = new System.Windows.Forms.SplitContainer();
+            this.histogramViewer = new Plugins.ExecutionProfiler.Controls.HistogramViewer();
             this.splitContainer2 = new System.Windows.Forms.SplitContainer();
             this.lvAsm = new System.Windows.Forms.ListView();
             this.Address = ((System.Windows.Forms.ColumnHeader)(new System.Windows.Forms.ColumnHeader()));
@@ -46,7 +47,6 @@
             this.txtSldFile = new System.Windows.Forms.TextBox();
             this.label1 = new System.Windows.Forms.Label();
             this.btnSldFile = new System.Windows.Forms.Button();
-            this.histogramViewer = new Plugins.ExecutionProfiler.Controls.HistogramViewer();
             ((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).BeginInit();
             this.splitContainer1.Panel1.SuspendLayout();
             this.splitContainer1.Panel2.SuspendLayout();
@@ -108,6 +108,17 @@
             this.splitContainer1.Size = new System.Drawing.Size(882, 381);
             this.splitContainer1.SplitterDistance = 118;
             this.splitContainer1.TabIndex = 4;
+            // 
+            // histogramViewer
+            // 
+            this.histogramViewer.Dock = System.Windows.Forms.DockStyle.Fill;
+            this.histogramViewer.Font = new System.Drawing.Font("Courier New", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.histogramViewer.Location = new System.Drawing.Point(0, 0);
+            this.histogramViewer.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
+            this.histogramViewer.Name = "histogramViewer";
+            this.histogramViewer.Size = new System.Drawing.Size(882, 118);
+            this.histogramViewer.TabIndex = 4;
+            this.histogramViewer.Locate += new System.EventHandler<string>(this.histogramViewer_Locate);
             // 
             // splitContainer2
             // 
@@ -179,6 +190,7 @@
             this.lvSource.View = System.Windows.Forms.View.Details;
             this.lvSource.VirtualMode = true;
             this.lvSource.RetrieveVirtualItem += new System.Windows.Forms.RetrieveVirtualItemEventHandler(this.LvSource_RetrieveVirtualItem);
+            this.lvSource.SearchForVirtualItem += new System.Windows.Forms.SearchForVirtualItemEventHandler(this.lvSource_SearchForVirtualItem);
             this.lvSource.SelectedIndexChanged += new System.EventHandler(this.lvSource_SelectedIndexChanged);
             // 
             // columnHeader1
@@ -234,17 +246,6 @@
             this.btnSldFile.Text = "...";
             this.btnSldFile.UseVisualStyleBackColor = true;
             this.btnSldFile.Click += new System.EventHandler(this.btnSldFile_Click);
-            // 
-            // histogramViewer
-            // 
-            this.histogramViewer.Dock = System.Windows.Forms.DockStyle.Fill;
-            this.histogramViewer.Font = new System.Drawing.Font("Courier New", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.histogramViewer.Location = new System.Drawing.Point(0, 0);
-            this.histogramViewer.Margin = new System.Windows.Forms.Padding(4, 3, 4, 3);
-            this.histogramViewer.Name = "histogramViewer";
-            this.histogramViewer.Size = new System.Drawing.Size(882, 118);
-            this.histogramViewer.TabIndex = 4;
-            this.histogramViewer.Locate += new System.EventHandler<string>(this.histogramViewer_Locate);
             // 
             // FormProfiler
             // 
