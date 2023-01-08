@@ -5,26 +5,27 @@ using System.Windows.Forms;
 
 namespace Plugins.ExecutionProfiler
 {
+    public enum ProfileMode { None, EveryExecution, ExecutionPerFrame };
+
     public class ExecutionProfilerPlugin : iPlugin
     {
         public const int MemorySize = 2 * 1024 * 1024;
-
+        public ExecutionProfilerPlugin() { }
         private static int[] _executed;
-        private static bool _profile = false;
+        private static ProfileMode _mode = ProfileMode.None;
         public static bool Active = false;
         public static FormProfiler Form;
 
-        public static int MaxValue = 0;
         public static int MinAddress = int.MaxValue;
         public static int MaxAddress = 0;
 
         public static int[] Executed => _executed;
-        public static bool Profile
+        public static ProfileMode Mode
         {
-            get { return _profile; }
+            get { return _mode; }
             set 
             { 
-                _profile = value; 
+                _mode = value; 
             }
         }
         
@@ -73,6 +74,12 @@ namespace Plugins.ExecutionProfiler
             if (_type == eAccess.Memory_EXE)
             {
                 _lastExecute = _port;
+                if (_mode == ProfileMode.EveryExecution)
+                {
+                    _executed[_lastExecute]++;
+                    if (_lastExecute < MinAddress) MinAddress = _lastExecute;
+                    if (_lastExecute > MaxAddress) MaxAddress = _lastExecute;
+                }
             }
             _isvalid = false;
             return 0;
@@ -85,10 +92,9 @@ namespace Plugins.ExecutionProfiler
 
         public void Tick()
         {
-            if (_profile)
+            if (_mode == ProfileMode.ExecutionPerFrame)
             {
                 _executed[_lastExecute]++;
-                if (_executed[_lastExecute] > MaxValue) MaxValue = _executed[_lastExecute];
                 if (_lastExecute < MinAddress) MinAddress = _lastExecute;
                 if (_lastExecute > MaxAddress) MaxAddress = _lastExecute;                
             }
@@ -103,7 +109,7 @@ namespace Plugins.ExecutionProfiler
 
     class WindowWrapper : IWin32Window
     {
-        private IntPtr _WindowHandle;
+        private readonly IntPtr _WindowHandle;
         public IntPtr Handle
         {
             get { return _WindowHandle; }

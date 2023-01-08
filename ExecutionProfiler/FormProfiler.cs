@@ -17,9 +17,10 @@ namespace Plugins.ExecutionProfiler
     {
         class SldEntry
         {
-            public int Address;
             public string File;
             public int Line;
+            public int Address;
+            public int Hits;
 
             public override int GetHashCode()
             {
@@ -42,22 +43,24 @@ namespace Plugins.ExecutionProfiler
         private readonly HashSet<SldEntry> _sldLookup = new HashSet<SldEntry>();
         private readonly Dictionary<int, SldEntry> _sld = new Dictionary<int, SldEntry>();
         private readonly Dictionary<string, string[]> _srcFiles = new Dictionary<string, string[]>();
-        private readonly Dictionary<SldEntry, int> _sourceHits = new Dictionary<SldEntry, int>();
-        private readonly List<ListViewItem> _asmItems = new List<ListViewItem>();
-        private readonly List<ListViewItem> _srcItems = new List<ListViewItem>();
+      
+        private readonly List<ListViewItem> _asmLvItemCache = new List<ListViewItem>();
+        private readonly List<ListViewItem> _srcLvItemCache = new List<ListViewItem>();
         
         public FormProfiler(iCSpect cspect)
         {
             Application.EnableVisualStyles();
             _cspect = cspect;
             InitializeComponent();
+
+            cbProfileMode.SelectedIndex = 0;
         }
 
         private void LvAsm_SearchForVirtualItem(object sender, SearchForVirtualItemEventArgs e)
         {
-            for(var i = 0; i < _asmItems.Count; i++)
+            for(var i = 0; i < _asmLvItemCache.Count; i++)
             {
-                if (_asmItems[i].Text == e.Text)
+                if (_asmLvItemCache[i].Text == e.Text)
                 {
                     e.Index = i;
                     break;
@@ -67,14 +70,14 @@ namespace Plugins.ExecutionProfiler
 
         private void LvAsm_RetrieveVirtualItem(object sender, RetrieveVirtualItemEventArgs e)
         {
-            if (e.ItemIndex >= 0 && e.ItemIndex < _asmItems.Count) e.Item = _asmItems[e.ItemIndex];
+            if (e.ItemIndex >= 0 && e.ItemIndex < _asmLvItemCache.Count) e.Item = _asmLvItemCache[e.ItemIndex];
         }
 
         private void lvSource_SearchForVirtualItem(object sender, SearchForVirtualItemEventArgs e)
         {
-            for (var i = 0; i < _srcItems.Count; i++)
+            for (var i = 0; i < _srcLvItemCache.Count; i++)
             {
-                if (_srcItems[i].Text == e.Text)
+                if (_srcLvItemCache[i].Text == e.Text)
                 {
                     e.Index = i;
                     break;
@@ -84,7 +87,7 @@ namespace Plugins.ExecutionProfiler
 
         private void LvSource_RetrieveVirtualItem(object sender, RetrieveVirtualItemEventArgs e)
         {
-            if (e.ItemIndex >= 0 && e.ItemIndex < _srcItems.Count) e.Item = _srcItems[e.ItemIndex];
+            if (e.ItemIndex >= 0 && e.ItemIndex < _srcLvItemCache.Count) e.Item = _srcLvItemCache[e.ItemIndex];
         }
 
         private void lvSource_SelectedIndexChanged(object sender, EventArgs e)
@@ -92,7 +95,7 @@ namespace Plugins.ExecutionProfiler
             if (lvSource.SelectedIndices.Count > 0)
             {
                 var index = lvSource.SelectedIndices[0];
-                var item = _srcItems[index];
+                var item = _srcLvItemCache[index];
                 if (item != null) histogramViewer_Locate(lvSource, item.Text);
             }
         }
@@ -102,9 +105,10 @@ namespace Plugins.ExecutionProfiler
             btnStart.Enabled = false;
             btnStop.Enabled = true;
             btnReset.Enabled = false;
+            btnSldFile.Enabled = false;
             
-            _asmItems.Clear();
-            _srcItems.Clear();
+            _asmLvItemCache.Clear();
+            _srcLvItemCache.Clear();
 
             lvAsm.Items.Clear();
             lvSource.Items.Clear();
@@ -112,24 +116,26 @@ namespace Plugins.ExecutionProfiler
             lvAsm.VirtualListSize = 0;
             lvSource.VirtualListSize = 0;
 
-            ExecutionProfilerPlugin.MaxValue = 0;
             ExecutionProfilerPlugin.MinAddress = int.MaxValue;
             ExecutionProfilerPlugin.MaxAddress = 0;
             Array.Clear(ExecutionProfilerPlugin.Executed, 0, ExecutionProfilerPlugin.Executed.Length);
             histogramViewer.Clear();
             UpdateViews();
 
-            ExecutionProfilerPlugin.Profile = true;
+            ExecutionProfilerPlugin.Mode = cbProfileMode.SelectedIndex == 0 ? ProfileMode.ExecutionPerFrame : ProfileMode.EveryExecution;
             timerProfileUpdate.Enabled = true;
         }
 
         private void btnStop_Click(object sender, EventArgs e)
         {
             timerProfileUpdate.Enabled = false;
-            ExecutionProfilerPlugin.Profile = false;
+            ExecutionProfilerPlugin.Mode = ProfileMode.None;
             btnStart.Enabled = true;
             btnStop.Enabled = false;
             btnReset.Enabled = true;
+            btnSldFile.Enabled = true;
+            if (ExecutionProfilerPlugin.MaxAddress <= ExecutionProfilerPlugin.MinAddress) return;
+            histogramViewer.SetData(ExecutionProfilerPlugin.MinAddress, ExecutionProfilerPlugin.MaxAddress, ExecutionProfilerPlugin.Executed);
             UpdateViews();
         }
 
@@ -147,32 +153,41 @@ namespace Plugins.ExecutionProfiler
             var from = ExecutionProfilerPlugin.MinAddress;
             var to = ExecutionProfilerPlugin.MaxAddress;
             var data = ExecutionProfilerPlugin.Executed;
-            //var data = (int[])_cspect.GetGlobal(eGlobal.profile_exe);
 
-            var maxSourceHits = 0;
 
-            _asmItems.Clear();
-            _srcItems.Clear();
+            var maxHits = 0;
+            foreach(var sld in _sldLookup)
+            {
+                sld.Hits = 0;
+            }
+            for(int i = 0; i < data.Length; i++)
+            {
+                if (data[i] > 0)
+                {
+                    if (data[i] > maxHits) maxHits = data[i];
+                    if (from == -1) from = 1;
+                    to = i;
+                }
+
+                if (_sld.TryGetValue(i, out SldEntry s))
+                {
+                    s.Hits += data[i];
+                    if (s.Hits > maxHits) maxHits = s.Hits;
+                }
+            }
+            
+            _asmLvItemCache.Clear();
+            _srcLvItemCache.Clear();
             for (int i = from; i < to;)
             {
                 var l = _cspect.DissasembleMemory(i, true);
                 var hits = data[i];
                 var item = new ListViewItem($"{i >> 16:x2}:{(i & 0x0000ffff):x4}");
                 item.SubItems.Add(l.line);
-                item.BackColor = GetColor(hits, ExecutionProfilerPlugin.MaxValue);
+                item.BackColor = GetColor(hits, maxHits);
 
-                _asmItems.Add(item);
-                if (_sld.TryGetValue(i, out SldEntry s))
-                {
-                    if (_sourceHits.TryGetValue(s, out int h))
-                    {
-                        hits += h;
-                    }
-                    _sourceHits[s] = hits;
-
-                    if (hits > maxSourceHits) maxSourceHits = hits;
-                }
-
+                _asmLvItemCache.Add(item);
+                
                 i += l.bytes;
             }
 
@@ -187,28 +202,23 @@ namespace Plugins.ExecutionProfiler
                     
                     int address = 0;
                     int hits = 0;
-
                     if (_sldLookup.TryGetValue(sldLookup, out SldEntry sld))
                     {
                         address = sld.Address;
-                    }
-
-                    if (!_sourceHits.TryGetValue(sldLookup, out hits))
-                    {
-                        hits = 0;
+                        hits = sld.Hits;
                     }
 
                     var item = new ListViewItem($"{address >> 16:x2}:{(address & 0x0000ffff):x4}");
                     item.SubItems.Add(kvp.Key);
                     item.SubItems.Add((i+1).ToString());
                     item.SubItems.Add(code);
-                    item.BackColor = GetColor(hits, maxSourceHits);
-                    _srcItems.Add(item);
+                    item.BackColor = GetColor(hits, maxHits);
+                    _srcLvItemCache.Add(item);
                 }
             }
 
-            lvAsm.VirtualListSize = _asmItems.Count;
-            lvSource.VirtualListSize = _srcItems.Count;
+            lvAsm.VirtualListSize = _asmLvItemCache.Count;
+            lvSource.VirtualListSize = _srcLvItemCache.Count;
         }
 
         private static Color GetColor(int hits, int maxValue)
@@ -228,20 +238,20 @@ namespace Plugins.ExecutionProfiler
 
         private void timerProfileUpdate_Tick(object sender, EventArgs e)
         {
-            if (ExecutionProfilerPlugin.MaxAddress <= ExecutionProfilerPlugin.MinAddress || ExecutionProfilerPlugin.MaxValue == 0) return;
+            if (ExecutionProfilerPlugin.MaxAddress <= ExecutionProfilerPlugin.MinAddress) return;
             histogramViewer.SetData(ExecutionProfilerPlugin.MinAddress, ExecutionProfilerPlugin.MaxAddress, ExecutionProfilerPlugin.Executed);
         }
 
         private void FormProfiler_FormClosed(object sender, FormClosedEventArgs e)
         {
-            ExecutionProfilerPlugin.Profile = false;
+            ExecutionProfilerPlugin.Mode = ProfileMode.None;
             ExecutionProfilerPlugin.Form = null;
             ExecutionProfilerPlugin.Active= false;
         }
 
         private void histogramView_Paint(object sender, PaintEventArgs e)
         {
-            if (ExecutionProfilerPlugin.MaxAddress <= ExecutionProfilerPlugin.MinAddress || ExecutionProfilerPlugin.MaxValue == 0) return;
+            if (ExecutionProfilerPlugin.MaxAddress <= ExecutionProfilerPlugin.MinAddress) return;
             histogramViewer.ForceUpdate();
         }
 
@@ -256,12 +266,13 @@ namespace Plugins.ExecutionProfiler
             {
                 txtSldFile.Text = dlg.FileName;
                 LoadSld(dlg.FileName);
-                if (!ExecutionProfilerPlugin.Profile) UpdateViews();
+                if (ExecutionProfilerPlugin.Mode == ProfileMode.None) UpdateViews();
             }
         }
 
         void LoadSld(string filename)
         {
+            _sldLookup.Clear();
             _sld.Clear();
             _srcFiles.Clear();
            
@@ -304,6 +315,7 @@ namespace Plugins.ExecutionProfiler
                         }
                         continue;
                     }
+                    if (type != "T") continue;
 
                     if (lastSldEntry != null)
                     {
@@ -330,6 +342,8 @@ namespace Plugins.ExecutionProfiler
 
         private void histogramViewer_Locate(object _, string e)
         {
+            if (e == "00:0000") return;
+
             var item = lvAsm.FindItemWithText(e);
             if (item != null) lvAsm.EnsureVisible(item.Index);
 
