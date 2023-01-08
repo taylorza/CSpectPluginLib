@@ -275,7 +275,8 @@ namespace Plugins.ExecutionProfiler
             _sldLookup.Clear();
             _sld.Clear();
             _srcFiles.Clear();
-           
+
+            var path = Path.GetDirectoryName(filename);
             using (var f = new StreamReader(filename))
             {
                 SldEntry lastSldEntry = null;
@@ -333,8 +334,20 @@ namespace Plugins.ExecutionProfiler
 
                     if (!_srcFiles.ContainsKey(srcFile))
                     {
-                        var lines = File.ReadAllLines(srcFile);
-                        _srcFiles.Add(srcFile, lines);
+                        var fullPath = srcFile;
+                        if (!Path.IsPathRooted(srcFile))
+                        {
+                            fullPath = Path.Combine(path, srcFile);
+                        }
+                        try
+                        {
+                            var lines = File.ReadAllLines(fullPath);
+                            _srcFiles.Add(srcFile, lines);
+                        }
+                        catch(Exception ex)
+                        {
+                            _srcFiles.Add(srcFile, new string[] { $"Unable to load source: {ex.Message}" });
+                        }
                     }
                 }
             }
