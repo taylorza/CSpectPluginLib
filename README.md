@@ -1,0 +1,2 @@
+# CSpectPluginLib
+CSpect Plugins Library
