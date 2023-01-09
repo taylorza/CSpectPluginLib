@@ -1,4 +1,4 @@
-# CSpectPluginLib[![Build](https://github.com/taylorza/CSpectPluginLib/actions/workflows/build.yml/badge.svg)](https://github.com/taylorza/CSpectPluginLib/actions/workflows/build.yml)
+# CSpectPluginLib [![Build](https://github.com/taylorza/CSpectPluginLib/actions/workflows/build.yml/badge.svg)](https://github.com/taylorza/CSpectPluginLib/actions/workflows/build.yml)
 CSpect Plugin Library
 
 ## Plugins
