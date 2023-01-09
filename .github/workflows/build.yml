@@ -1,0 +1,20 @@
+name: Build
+on:
+  push: 
+    branches: [main]
+  pull_request:
+    branches: [main]
+    
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v1
+      - name: Navigate to Workspace
+        run: cd $GITHUB_WORKSPACE
+      - name: Build Solution
+        run: msbuild CSpectPluginLib.sln /p:platform="Any CPU" /p:configuration="Release"
+        
+  
