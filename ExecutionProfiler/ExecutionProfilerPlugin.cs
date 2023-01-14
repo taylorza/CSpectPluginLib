@@ -1,16 +1,18 @@
 ﻿using Plugin;
 using System;
 using System.Collections.Generic;
+using System.Threading;
 using System.Windows.Forms;
 
 namespace Plugins.ExecutionProfiler
 {
-    public enum ProfileMode { None, EveryExecution, ExecutionPerFrame };
+    public enum ProfileMode { None, Sample10ms, SamplePerFrame, EveryExecution };
 
     public class ExecutionProfilerPlugin : iPlugin
     {
         public const int MemorySize = 2 * 1024 * 1024;
         public ExecutionProfilerPlugin() { }
+        private static long _lastExecute;
         private static int[] _executed;
         private static ProfileMode _mode = ProfileMode.None;
         public static bool Active = false;
@@ -28,9 +30,18 @@ namespace Plugins.ExecutionProfiler
                 _mode = value; 
             }
         }
+
+        public static void TakeSample()
+        {
+            var address = Interlocked.Read(ref _lastExecute);
+            Interlocked.Increment(ref _executed[address]);
+            
+            if (address < MinAddress) MinAddress = (int)address;
+            if (address > MaxAddress) MaxAddress = (int)address;
+        }
         
         private iCSpect _cspect;
-        private int _lastExecute;
+        
         private WindowWrapper _hwndWrapper;
         
         public List<sIO> Init(iCSpect _CSpect)
@@ -73,12 +84,12 @@ namespace Plugins.ExecutionProfiler
         {
             if (_type == eAccess.Memory_EXE)
             {
-                _lastExecute = _port;
+                Interlocked.Exchange(ref _lastExecute, _port);
                 if (_mode == ProfileMode.EveryExecution)
                 {
-                    _executed[_lastExecute]++;
-                    if (_lastExecute < MinAddress) MinAddress = _lastExecute;
-                    if (_lastExecute > MaxAddress) MaxAddress = _lastExecute;
+                    _executed[_port]++;
+                    if (_port < MinAddress) MinAddress = _port;
+                    if (_port > MaxAddress) MaxAddress = _port;
                 }
             }
             _isvalid = false;
@@ -92,11 +103,11 @@ namespace Plugins.ExecutionProfiler
 
         public void Tick()
         {
-            if (_mode == ProfileMode.ExecutionPerFrame)
+            if (_mode == ProfileMode.SamplePerFrame)
             {
                 _executed[_lastExecute]++;
-                if (_lastExecute < MinAddress) MinAddress = _lastExecute;
-                if (_lastExecute > MaxAddress) MaxAddress = _lastExecute;                
+                if (_lastExecute < MinAddress) MinAddress = (int)_lastExecute;
+                if (_lastExecute > MaxAddress) MaxAddress = (int)_lastExecute;                
             }
         }
 

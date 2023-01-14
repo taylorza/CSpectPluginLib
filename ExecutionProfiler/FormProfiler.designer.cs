@@ -261,13 +261,15 @@
             // 
             // cbProfileMode
             // 
+            this.cbProfileMode.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
             this.cbProfileMode.FormattingEnabled = true;
             this.cbProfileMode.Items.AddRange(new object[] {
-            "Per Frame",
+            "Sample 10ms",
+            "Sample Per Frame",
             "Every Execution"});
             this.cbProfileMode.Location = new System.Drawing.Point(230, 13);
             this.cbProfileMode.Name = "cbProfileMode";
-            this.cbProfileMode.Size = new System.Drawing.Size(106, 21);
+            this.cbProfileMode.Size = new System.Drawing.Size(116, 21);
             this.cbProfileMode.TabIndex = 4;
             // 
             // FormProfiler

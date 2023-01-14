@@ -46,6 +46,8 @@ namespace Plugins.ExecutionProfiler
       
         private readonly List<ListViewItem> _asmLvItemCache = new List<ListViewItem>();
         private readonly List<ListViewItem> _srcLvItemCache = new List<ListViewItem>();
+
+        private System.Threading.Timer _sampleTimer;
         
         public FormProfiler(iCSpect cspect)
         {
@@ -122,8 +124,22 @@ namespace Plugins.ExecutionProfiler
             histogramViewer.Clear();
             UpdateViews();
 
-            ExecutionProfilerPlugin.Mode = cbProfileMode.SelectedIndex == 0 ? ProfileMode.ExecutionPerFrame : ProfileMode.EveryExecution;
+            switch (cbProfileMode.SelectedIndex)
+            {
+                case 0:
+                    _sampleTimer = new System.Threading.Timer(CollectSample, null, 0, 10);
+                    ExecutionProfilerPlugin.Mode = ProfileMode.Sample10ms; 
+                    break;
+                case 1: ExecutionProfilerPlugin.Mode = ProfileMode.SamplePerFrame; break;
+                case 2: ExecutionProfilerPlugin.Mode = ProfileMode.EveryExecution; break;
+            }
+
             timerProfileUpdate.Enabled = true;
+        }
+
+        private void CollectSample(object state)
+        {
+            ExecutionProfilerPlugin.TakeSample();
         }
 
         private void btnStop_Click(object sender, EventArgs e)
@@ -134,6 +150,11 @@ namespace Plugins.ExecutionProfiler
             btnStop.Enabled = false;
             btnReset.Enabled = true;
             btnSldFile.Enabled = true;
+            if (_sampleTimer != null)
+            {
+                _sampleTimer.Dispose();
+                _sampleTimer = null;
+            }
             if (ExecutionProfilerPlugin.MaxAddress <= ExecutionProfilerPlugin.MinAddress) return;
             histogramViewer.SetData(ExecutionProfilerPlugin.MinAddress, ExecutionProfilerPlugin.MaxAddress, ExecutionProfilerPlugin.Executed);
             UpdateViews();
