@@ -18,6 +18,8 @@ namespace Plugins.ExecutionProfiler
         public static bool Active = false;
         public static FormProfiler Form;
 
+        bool OpenExecutionProfiler = false;
+
         public static int MinAddress = int.MaxValue;
         public static int MaxAddress = 0;
 
@@ -66,9 +68,7 @@ namespace Plugins.ExecutionProfiler
         {
             if (_id == 0)
             {
-                if (Active) return true;
-                Form = new FormProfiler(_cspect);
-                Form.Show();
+                OpenExecutionProfiler = true;
                 return true;
             }
             
@@ -108,6 +108,20 @@ namespace Plugins.ExecutionProfiler
                 _executed[_lastExecute]++;
                 if (_lastExecute < MinAddress) MinAddress = (int)_lastExecute;
                 if (_lastExecute > MaxAddress) MaxAddress = (int)_lastExecute;                
+            }
+        }
+
+        public void OSTick()
+        {
+            if (OpenExecutionProfiler)
+            {
+                OpenExecutionProfiler = false;
+                if (!Active)
+                {
+                    Active = true;
+                    Form = new FormProfiler(_cspect);
+                    Form.Show();
+                }
             }
         }
 
