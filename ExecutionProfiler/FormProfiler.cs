@@ -267,7 +267,6 @@ namespace Plugins.ExecutionProfiler
         {
             ExecutionProfilerPlugin.Mode = ProfileMode.None;
             ExecutionProfilerPlugin.Form = null;
-            ExecutionProfilerPlugin.Active= false;
         }
 
         private void histogramView_Paint(object sender, PaintEventArgs e)

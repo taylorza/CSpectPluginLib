@@ -15,9 +15,8 @@ namespace Plugins.ExecutionProfiler
         private static long _lastExecute;
         private static int[] _executed;
         private static ProfileMode _mode = ProfileMode.None;
-        public static bool Active = false;
         public static FormProfiler Form;
-
+        
         public static int MinAddress = int.MaxValue;
         public static int MaxAddress = 0;
 
@@ -41,9 +40,12 @@ namespace Plugins.ExecutionProfiler
         }
         
         private iCSpect _cspect;
-        
+#pragma warning disable IDE0052 // Remove unread private members
         private WindowWrapper _hwndWrapper;
-        
+#pragma warning restore IDE0052 // Remove unread private members
+
+        private volatile bool _openProfiler;
+
         public List<sIO> Init(iCSpect _CSpect)
         {
             _cspect = _CSpect;
@@ -66,9 +68,7 @@ namespace Plugins.ExecutionProfiler
         {
             if (_id == 0)
             {
-                if (Active) return true;
-                Form = new FormProfiler(_cspect);
-                Form.Show();
+                if (Form is null) _openProfiler = true;
                 return true;
             }
             
@@ -105,9 +105,7 @@ namespace Plugins.ExecutionProfiler
         {
             if (_mode == ProfileMode.SamplePerFrame)
             {
-                _executed[_lastExecute]++;
-                if (_lastExecute < MinAddress) MinAddress = (int)_lastExecute;
-                if (_lastExecute > MaxAddress) MaxAddress = (int)_lastExecute;                
+                TakeSample();
             }
         }
 
@@ -115,6 +113,16 @@ namespace Plugins.ExecutionProfiler
         {
             
             return false;
+        }
+
+        public void OSTick()
+        {
+            if (_openProfiler)
+            {
+                _openProfiler = false;
+                if (Form is null) Form = new FormProfiler(_cspect);
+                Form.Show();
+            }
         }
     }
 
